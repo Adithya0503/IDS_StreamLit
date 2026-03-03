@@ -210,7 +210,7 @@ Upload the CSV file to the Streamlit app
 
 View anomaly results and risk analysis
 
-## 🏗 How We Performed the Project
+# 🏗 How We Performed the Project
 ### Phase 1 – Research
 
 Studied AI-based anomaly detection models
