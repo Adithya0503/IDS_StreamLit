@@ -198,7 +198,7 @@ The browser will automatically open at:
 http://localhost:8501
 ```
 
-## 🌐 How to Use the Application
+# 🌐 How to Use the Application
 
 Download the Audit Script (.cmd)
 
@@ -249,7 +249,7 @@ Deployed using Streamlit Cloud
 
 Tested end-to-end workflow
 
-## 🧾 Conclusion
+# 🧾 Conclusion
 
 This project demonstrates how AI can be used to enhance Windows system security auditing by combining:
 
