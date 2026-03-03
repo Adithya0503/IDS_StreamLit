@@ -211,7 +211,7 @@ Upload the CSV file to the Streamlit app
 View anomaly results and risk analysis
 
 ## 🏗 How We Performed the Project
-# Phase 1 – Research
+### Phase 1 – Research
 
 Studied AI-based anomaly detection models
 
@@ -219,7 +219,7 @@ Compared rule-based vs ML-based approaches
 
 Selected Isolation Forest for unsupervised anomaly detection
 
-# Phase 2 – Client Script Development
+### Phase 2 – Client Script Development
 
 Developed dynamic Windows batch script
 
@@ -229,7 +229,7 @@ Extracted telemetry and registry data
 
 Generated structured CSV
 
-# Phase 3 – AI Web Application
+### Phase 3 – AI Web Application
 
 Built Streamlit interface
 
@@ -241,7 +241,7 @@ Added visualization dashboard
 
 Added installed applications display
 
-# Phase 4 – Deployment
+### Phase 4 – Deployment
 
 Configured requirements.txt
 
