@@ -157,3 +157,108 @@ Verify installation:
 
 ```bash
 python --version
+```
+## Step 2: Clone or Download Project
+
+If using Git:
+
+```bash
+git clone https://github.com/Adithya0503/IDS_StreamLit
+cd IDS_StreamLit
+```
+Or download ZIP and extract.
+
+## Step 3: Create Virtual Environment (Recommended)
+
+```bash
+python -m venv venv
+```
+Activate it:
+```bash
+venv\Scripts\activate
+```
+If You Get PowerShell Execution Error
+Run once:
+```bash
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+```
+Then activate venv again.
+
+## Step 4: Install Dependencies
+```bash
+pip install -r requirements.txt
+```
+
+## Step 5: Run the Streamlit Application
+```bash
+streamlit run app.py
+```
+The browser will automatically open at:
+```bash
+http://localhost:8501
+```
+
+##🌐 How to Use the Application
+
+Download the Audit Script (.cmd)
+
+Run it on your Windows machine
+
+CSV file will be generated
+
+Upload the CSV file to the Streamlit app
+
+View anomaly results and risk analysis
+
+## 🏗 How We Performed the Project
+Phase 1 – Research
+
+Studied AI-based anomaly detection models
+
+Compared rule-based vs ML-based approaches
+
+Selected Isolation Forest for unsupervised anomaly detection
+
+Phase 2 – Client Script Development
+
+Developed dynamic Windows batch script
+
+Embedded Python code inside CMD
+
+Extracted telemetry and registry data
+
+Generated structured CSV
+
+Phase 3 – AI Web Application
+
+Built Streamlit interface
+
+Integrated Isolation Forest
+
+Implemented risk scoring logic
+
+Added visualization dashboard
+
+Added installed applications display
+
+Phase 4 – Deployment
+
+Configured requirements.txt
+
+Deployed using Streamlit Cloud
+
+Tested end-to-end workflow
+
+## 🧾 Conclusion
+
+This project demonstrates how AI can be used to enhance Windows system security auditing by combining:
+
+Local telemetry collection
+
+AI-based anomaly detection
+
+Web-based visualization
+
+Risk assessment framework
+
+It provides a scalable and privacy-aware security monitoring solution suitable for academic and enterprise applications.
