@@ -20,7 +20,7 @@ st.markdown("""
 1. **Download** the formal Audit Script (`windows_system_audit.py`).
 2. **Run** it on your Windows machine to generate a report folder.
 3. **Upload** all CSV files from that folder to this dashboard.
-4. **Analyze** results and **Email** a PDF report to yourself.
+4. **Analyze** results and **Email** a PDF report to the recipient of your choice.
 """)
 
 # -------------------------------------------------------
@@ -52,15 +52,15 @@ uploaded_files = st.file_uploader(
 )
 
 if uploaded_files:
-    # Map filenames to DataFrames
     file_map = {file.name.upper(): pd.read_csv(file) for file in uploaded_files}
     
     # --- AI RISK ANALYSIS ---
     st.header("📊 AI Risk Analysis")
     
-    # Isolation Forest looks for statistical outliers in numeric telemetry
+    # Extract numeric telemetry for the Isolation Forest model
     all_numeric = pd.concat([df.select_dtypes(include=['number']) for df in file_map.values()], axis=1).fillna(0)
 
+    risk_score = 0
     if not all_numeric.empty:
         model = IsolationForest(n_estimators=150, contamination=0.05, random_state=42)
         preds = model.fit_predict(all_numeric)
@@ -75,119 +75,113 @@ if uploaded_files:
         col3.metric("Risk Score", f"{risk_score}%")
 
         if risk_score > 20:
-            st.error("🚨 HIGH RISK: Significant anomalies detected. Review the Network and Process tabs.")
+            st.error("🚨 HIGH RISK: Statistical anomalies detected in system telemetry.")
         else:
-            st.success("✅ LOW RISK: System behavior appears stable.")
+            st.success("✅ LOW RISK: System behavior is within normal parameters.")
 
-    # --- CATEGORIZED TABLES ---
-    st.header("🔍 Detailed Security Audit")
+    # --- CATEGORIZED TABS ---
     tab1, tab2, tab3, tab4 = st.tabs(["🌐 Network", "⚙️ Processes", "🛡️ Security & Users", "📂 Raw Index"])
 
     def clean_df(df):
-        # Remove formal report metadata for cleaner UI display
         return df.drop(columns=["Audit_Reference_Timestamp", "Asset_Hostname", "Section_Title"], errors='ignore')
 
     with tab1:
-        st.subheader("Listening Ports & Connections")
         for name, df in file_map.items():
             if any(k in name for k in ["PORT", "CONNECTION", "IP"]):
                 st.write(f"**Source:** {name}")
                 st.dataframe(clean_df(df), use_container_width=True)
 
     with tab2:
-        st.subheader("Running Processes & Startups")
         for name, df in file_map.items():
             if any(k in name for k in ["PROCESS", "STARTUP", "PROGRAM"]):
                 st.write(f"**Source:** {name}")
                 st.dataframe(clean_df(df), use_container_width=True)
 
     with tab3:
-        st.subheader("System Security & User Accounts")
         for name, df in file_map.items():
             if any(k in name for k in ["USER", "ADMIN", "POLICY", "STATUS", "FIREWALL"]):
                 st.write(f"**Source:** {name}")
                 st.dataframe(clean_df(df), use_container_width=True)
 
     with tab4:
-        st.subheader("Full Report File Access")
         for name, df in file_map.items():
             with st.expander(f"View {name}"):
                 st.dataframe(df)
 
     # -------------------------------------------------------
-    # STEP 3: EMAIL & PDF REPORTING
+    # STEP 3: EMAIL TO ENTERED ADDRESS
     # -------------------------------------------------------
     st.divider()
-    st.header("📧 Step 3: Receive PDF Report via Email")
+    st.header("📧 Step 3: Send PDF Report")
     
-    # Extract Device Name for the report header
+    # Identify device name from the audit metadata
     first_df = list(file_map.values())[0]
     device_name = first_df["Asset_Hostname"].iloc[0] if "Asset_Hostname" in first_df.columns else "Unknown_Device"
 
-    user_email = st.text_input("Enter Email Address")
+    recipient_email = st.text_input("Enter the recipient's email address")
     
-    if st.button("Generate & Send PDF"):
-        if user_email:
+    if st.button("Send Report to Entered Email"):
+        if recipient_email:
             try:
-                # 1. Generate PDF
+                # 1. Generate PDF Report
                 pdf_path = f"Security_Report_{device_name}.pdf"
                 c = canvas.Canvas(pdf_path, pagesize=letter)
-                c.setTitle(f"Audit Report - {device_name}")
-                
-                c.setFont("Helvetica-Bold", 18)
-                c.drawString(50, 750, "🛡️ Windows AI Security Audit Report")
+                c.setFont("Helvetica-Bold", 16)
+                c.drawString(50, 750, f"AI Security Audit: {device_name}")
                 
                 c.setFont("Helvetica", 12)
-                c.drawString(50, 730, f"Target Device: {device_name}")
-                c.drawString(50, 715, f"AI Risk Score: {risk_score}%")
-                c.drawString(50, 700, f"Analysis Timestamp: {pd.Timestamp.now()}")
+                c.drawString(50, 730, f"Risk Score: {risk_score}%")
+                c.drawString(50, 715, f"Date: {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M')}")
 
                 c.setFont("Helvetica-Bold", 14)
-                c.drawString(50, 660, "💡 Security Recommendations:")
+                c.drawString(50, 680, "🛡️ Security Recommendations:")
                 c.setFont("Helvetica", 11)
-                recs = [
-                    "• Investigate high-memory or unknown processes marked as anomalies.",
-                    "• Review 'OpenPort' list; close ports like 3389 (RDP) if not required.",
-                    "• Verify 'Firewall_Public' status is 'ON' for all network interfaces.",
-                    "• Ensure 'Local Administrators' list only contains authorized users."
+                
+                # Dynamic recommendations based on risk score
+                recommendations = [
+                    "• Investigate all processes flagged as anomalies for hidden malware.",
+                    "• Verify that RDP (Port 3389) is disabled if not actively used.",
+                    "• Ensure Windows Firewall is enabled for Public and Private profiles.",
+                    "• Audit the Local Administrators list for unauthorized accounts."
                 ]
-                y = 640
-                for r in recs:
-                    c.drawString(60, y, r)
-                    y -= 20
+                
+                y_pos = 660
+                for line in recommendations:
+                    c.drawString(60, y_pos, line)
+                    y_pos -= 20
                 
                 c.save()
 
-                # 2. Setup Email (Replace credentials with Environment Variables in production)
-                # You must use a Gmail 'App Password' for this to work.
-                SENDER = "your-email@gmail.com" 
-                PASSWORD = "your-app-password" 
+                # 2. Setup Email Settings
+                # Replace with your actual credentials or Streamlit Secrets
+                SENDER_EMAIL = "your-email@gmail.com" 
+                SENDER_PASSWORD = "your-app-password" 
 
                 msg = MIMEMultipart()
-                msg['From'] = SENDER
-                msg['To'] = user_email
-                msg['Subject'] = f"Security Audit: {device_name} ({risk_score}% Risk)"
+                msg['From'] = SENDER_EMAIL
+                msg['To'] = recipient_email  # Sends to the address entered in the text box
+                msg['Subject'] = f"🛡️ Windows Security Report - {device_name}"
                 
-                body = f"Hello,\n\nPlease find the attached AI Security Report for the device: {device_name}."
-                msg.attach(MIMEText(body, 'plain'))
+                email_body = f"Please find the attached Security Audit for {device_name}.\nRisk Score: {risk_score}%"
+                msg.attach(MIMEText(email_body, 'plain'))
 
-                with open(pdf_path, "rb") as f:
-                    part = MIMEApplication(f.read(), Name=pdf_path)
+                with open(pdf_path, "rb") as attachment:
+                    part = MIMEApplication(attachment.read(), Name=pdf_path)
                     part['Content-Disposition'] = f'attachment; filename="{pdf_path}"'
                     msg.attach(part)
 
-                # 3. Send
+                # 3. Connect and Send
                 with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-                    server.login(SENDER, PASSWORD)
+                    server.login(SENDER_EMAIL, SENDER_PASSWORD)
                     server.send_message(msg)
 
-                st.success(f"✅ PDF Report sent to {user_email}!")
-                os.remove(pdf_path) # Security: remove file after sending
+                st.success(f"✅ Security report has been sent to {recipient_email}")
+                os.remove(pdf_path) # Clean up
 
             except Exception as e:
                 st.error(f"Error sending email: {e}")
         else:
-            st.warning("Please enter a valid email address.")
+            st.warning("Please enter a valid email address in the field above.")
 
 else:
-    st.info("Please upload the CSV files from your report folder to begin analysis.")
+    st.info("Upload your audit CSV files to begin.")
