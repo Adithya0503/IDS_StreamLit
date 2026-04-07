@@ -1,4 +1,4 @@
-import streamlit as st
+ssimport streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.ensemble import IsolationForest
