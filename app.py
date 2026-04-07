@@ -15,14 +15,6 @@ st.set_page_config(page_title="Windows AI Security Analyzer Pro", layout="wide")
 
 st.title("🛡️ Windows AI Security Anomaly Detection System")
 
-st.markdown("""
-### 📋 Instructions
-1. **Download** the `windows_system_audit.py` script.
-2. **Run** it locally to generate your report folder.
-3. **Upload** all CSV files from that folder here.
-4. **Enter an email** below to receive the PDF report.
-""")
-
 # -------------------------------------------------------
 # STEP 1: DOWNLOAD SECTION
 # -------------------------------------------------------
@@ -60,7 +52,6 @@ if uploaded_files:
     if not all_numeric.empty:
         model = IsolationForest(n_estimators=150, contamination=0.05, random_state=42)
         preds = model.fit_predict(all_numeric)
-        
         total_points = len(preds)
         anomalies = (preds == -1).sum()
         risk_score = round((anomalies / total_points) * 100, 2)
@@ -117,24 +108,12 @@ if uploaded_files:
                 c.drawString(50, 750, f"AI Security Audit: {device_name}")
                 c.setFont("Helvetica", 12)
                 c.drawString(50, 730, f"Risk Score: {risk_score}%")
-                
-                c.setFont("Helvetica-Bold", 14)
-                c.drawString(50, 680, "🛡️ Security Recommendations:")
-                c.setFont("Helvetica", 11)
-                recs = [
-                    "• Investigate anomalous processes for unauthorized activity.",
-                    "• Verify if RDP (Port 3389) is needed; close if not.",
-                    "• Ensure all Windows Firewall profiles are enabled.",
-                    "• Audit Local Administrator accounts for new or unknown users."
-                ]
-                y = 660
-                for r in recs:
-                    c.drawString(60, y, r); y -= 20
                 c.save()
 
-                # 2. Setup Email with your specific App Password
-                SENDER_EMAIL = "fypj21649@gmail.com" 
-                SENDER_PASSWORD = "rnrb kbpm damx lbmt" # Use the code you generated
+                # 2. Setup Email using Secrets
+                # Ensure these match exactly what you put in the Streamlit Cloud Dashboard
+                SENDER_EMAIL = st.secrets["SENDER_EMAIL"]
+                SENDER_PASSWORD = st.secrets["SENDER_PASSWORD"]
 
                 msg = MIMEMultipart()
                 msg['From'] = SENDER_EMAIL
@@ -147,8 +126,9 @@ if uploaded_files:
                     part['Content-Disposition'] = f'attachment; filename="{pdf_path}"'
                     msg.attach(part)
 
-                # 3. Use SSL Port 465 for Secure Connection
+                # 3. Connect and Send
                 with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+                    # server.set_debuglevel(1) # Uncomment this to see full logs in the Manage App console
                     server.login(SENDER_EMAIL, SENDER_PASSWORD)
                     server.send_message(msg)
 
