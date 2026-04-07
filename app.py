@@ -54,7 +54,7 @@ if uploaded_files:
     file_map = {file.name.upper(): pd.read_csv(file) for file in uploaded_files}
     
     # --- AI RISK ANALYSIS ---
-    # Using Isolation Forest for unsupervised anomaly detection
+    # Isolation Forest detects statistical outliers in system telemetry
     all_numeric = pd.concat([df.select_dtypes(include=['number']) for df in file_map.values()], axis=1).fillna(0)
 
     risk_score = 0
@@ -75,7 +75,6 @@ if uploaded_files:
     tab1, tab2, tab3, tab4 = st.tabs(["🌐 Network", "⚙️ Processes", "🛡️ Security & Users", "📂 Raw Index"])
 
     def clean_df(df):
-        # Remove metadata columns for a cleaner UI
         return df.drop(columns=["Audit_Reference_Timestamp", "Asset_Hostname", "Section_Title"], errors='ignore')
 
     with tab1:
@@ -107,6 +106,7 @@ if uploaded_files:
     st.divider()
     st.header("📧 Step 3: Send PDF Report")
     
+    # Identify device name from report metadata
     first_df = list(file_map.values())[0]
     device_name = first_df["Asset_Hostname"].iloc[0] if "Asset_Hostname" in first_df.columns else "Unknown_Device"
 
@@ -137,15 +137,15 @@ if uploaded_files:
                     c.drawString(60, y, r); y -= 20
                 c.save()
 
-                # 2. Setup Email using Secrets for security
-                SENDER_EMAIL = st.secrets["SENDER_EMAIL"]
-                SENDER_PASSWORD = st.secrets["SENDER_PASSWORD"]
+                # 2. Setup Email Credentials
+                SENDER_EMAIL = "fypj21649@gmail.com" 
+                SENDER_PASSWORD = "tneu xfaf sqrv ebgh" # Updated App Password
 
                 msg = MIMEMultipart()
                 msg['From'] = SENDER_EMAIL
                 msg['To'] = recipient_email 
                 msg['Subject'] = f"🛡️ Windows Security Report - {device_name}"
-                msg.attach(MIMEText(f"Attached is the security report for {device_name}.", 'plain'))
+                msg.attach(MIMEText(f"Attached is the security report for {device_name}.\nRisk Score: {risk_score}%", 'plain'))
 
                 with open(pdf_path, "rb") as f:
                     part = MIMEApplication(f.read(), Name=pdf_path)
@@ -159,7 +159,7 @@ if uploaded_files:
                 server.send_message(msg)
                 server.quit()
 
-                st.success(f"✅ Security report sent to {recipient_email}")
+                st.success(f"✅ Security report successfully sent to {recipient_email}")
                 os.remove(pdf_path)
 
             except Exception as e:
