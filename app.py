@@ -1,246 +1,113 @@
 import streamlit as st
 import pandas as pd
-from sklearn.ensemble import IsolationForest
 import matplotlib.pyplot as plt
+from sklearn.ensemble import IsolationForest
+import os
 
-st.set_page_config(page_title="Windows AI Security Analyzer", layout="wide")
+# --- PAGE CONFIG ---
+st.set_page_config(page_title="Windows AI Security Analyzer Pro", layout="wide")
 
-st.title("🛡 Windows AI Security Anomaly Detection System")
+st.title("🛡️ Windows AI Security Anomaly Detection System")
 
 st.markdown("""
-This tool allows users to:
-
-1. Download the Windows Audit Collector
-2. Run it locally to generate system telemetry
-3. Upload the generated CSV file
-4. Detect anomalies using AI
+### 📋 Instructions
+1. **Download** the new Audit Script below.
+2. **Run** it on a Windows machine (requires Python).
+3. **Upload** all generated CSV files from the `audit_output/Report_...` folder.
 """)
-
-# -------------------------------------------------------
-# EMBEDDED CMD SCRIPT (WITH INSTALLED APPS)
-# -------------------------------------------------------
-
-cmd_script = r"""@echo off
-color 0A
-title Windows Security Audit Collector
-
-echo =====================================================
-echo        WINDOWS SECURITY AUDIT DATA COLLECTOR
-echo =====================================================
-echo.
-
-python --version >nul 2>&1
-IF %ERRORLEVEL% NEQ 0 (
-    echo Python is NOT installed on this system.
-    echo Please install Python from:
-    echo https://www.python.org/downloads/
-    pause
-    exit /b
-)
-
-echo Python detected successfully.
-echo.
-
-pip show psutil >nul 2>&1 || (
-    echo Installing required package: psutil
-    pip install psutil
-)
-
-echo Running system audit...
-echo.
-
-set SCRIPT_NAME=temp_audit_script.py
-
-echo import os> %SCRIPT_NAME%
-echo import csv>> %SCRIPT_NAME%
-echo import socket>> %SCRIPT_NAME%
-echo import psutil>> %SCRIPT_NAME%
-echo import winreg>> %SCRIPT_NAME%
-echo from datetime import datetime>> %SCRIPT_NAME%
-echo.>> %SCRIPT_NAME%
-echo hostname = socket.gethostname()>> %SCRIPT_NAME%
-echo timestamp = datetime.now().strftime("%%Y%%m%%d_%%H%%M%%S")>> %SCRIPT_NAME%
-echo filename = hostname + "_audit_" + timestamp + ".csv">> %SCRIPT_NAME%
-echo.>> %SCRIPT_NAME%
-echo def get_installed_apps():>> %SCRIPT_NAME%
-echo     apps = []>> %SCRIPT_NAME%
-echo     registry_paths = [>> %SCRIPT_NAME%
-echo         r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall",>> %SCRIPT_NAME%
-echo         r"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall">> %SCRIPT_NAME%
-echo     ]>> %SCRIPT_NAME%
-echo     for path in registry_paths:>> %SCRIPT_NAME%
-echo         try:>> %SCRIPT_NAME%
-echo             reg_key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, path)>> %SCRIPT_NAME%
-echo             for i in range(winreg.QueryInfoKey(reg_key)[0]):>> %SCRIPT_NAME%
-echo                 subkey_name = winreg.EnumKey(reg_key, i)>> %SCRIPT_NAME%
-echo                 subkey = winreg.OpenKey(reg_key, subkey_name)>> %SCRIPT_NAME%
-echo                 try:>> %SCRIPT_NAME%
-echo                     name = winreg.QueryValueEx(subkey, "DisplayName")[0]>> %SCRIPT_NAME%
-echo                     apps.append(name)>> %SCRIPT_NAME%
-echo                 except:>> %SCRIPT_NAME%
-echo                     pass>> %SCRIPT_NAME%
-echo         except:>> %SCRIPT_NAME%
-echo             pass>> %SCRIPT_NAME%
-echo     return apps>> %SCRIPT_NAME%
-echo.>> %SCRIPT_NAME%
-echo with open(filename, "w", newline="", encoding="utf-8") as file:>> %SCRIPT_NAME%
-echo     writer = csv.writer(file)>> %SCRIPT_NAME%
-echo     writer.writerow(["Type","Value1","Value2","Value3"])>> %SCRIPT_NAME%
-echo.>> %SCRIPT_NAME%
-echo     writer.writerow(["CPU_Percent", psutil.cpu_percent(), "", ""])>> %SCRIPT_NAME%
-echo     writer.writerow(["Memory_Percent", psutil.virtual_memory().percent, "", ""])>> %SCRIPT_NAME%
-echo.>> %SCRIPT_NAME%
-echo     for proc in psutil.process_iter(['pid','cpu_percent','memory_percent']):>> %SCRIPT_NAME%
-echo         try:>> %SCRIPT_NAME%
-echo             writer.writerow(["Process", proc.info['pid'], proc.info['cpu_percent'], round(proc.info['memory_percent'],2)])>> %SCRIPT_NAME%
-echo         except:>> %SCRIPT_NAME%
-echo             pass>> %SCRIPT_NAME%
-echo.>> %SCRIPT_NAME%
-echo     for conn in psutil.net_connections(kind='inet'):>> %SCRIPT_NAME%
-echo         if conn.status == psutil.CONN_LISTEN:>> %SCRIPT_NAME%
-echo             writer.writerow(["OpenPort", conn.laddr.port, conn.pid, ""])>> %SCRIPT_NAME%
-echo.>> %SCRIPT_NAME%
-echo     installed_apps = get_installed_apps()>> %SCRIPT_NAME%
-echo     for app in installed_apps:>> %SCRIPT_NAME%
-echo         writer.writerow(["InstalledApp", app, "", ""])>> %SCRIPT_NAME%
-echo.>> %SCRIPT_NAME%
-echo print("Audit file created:", filename)>> %SCRIPT_NAME%
-
-python %SCRIPT_NAME%
-del %SCRIPT_NAME%
-
-echo.
-echo AUDIT COMPLETED SUCCESSFULLY
-explorer .
-pause
-"""
 
 # -------------------------------------------------------
 # DOWNLOAD SECTION
 # -------------------------------------------------------
-
 st.header("📥 Step 1: Download Audit Script")
 
-st.download_button(
-    label="Download Audit Script (.cmd)",
-    data=cmd_script,
-    file_name="audit_script.cmd",
-    mime="application/octet-stream"
-)
-
-st.info("Run the downloaded CMD file to generate the audit CSV file.")
+# We read the local windows_system_audit.py to offer it for download
+try:
+    with open("windows_system_audit.py", "rb") as file:
+        st.download_button(
+            label="Download Formal Audit Script (.py)",
+            data=file,
+            file_name="windows_system_audit.py",
+            mime="text/x-python"
+        )
+    st.info("💡 Run this script locally using: `python windows_system_audit.py`")
+except FileNotFoundError:
+    st.error("Error: 'windows_system_audit.py' not found in the repository. Please ensure the file is uploaded to GitHub.")
 
 # -------------------------------------------------------
 # UPLOAD SECTION
 # -------------------------------------------------------
+st.header("📤 Step 2: Upload Generated CSV Files")
 
-st.header("📤 Step 2: Upload Generated CSV File")
+# Allow multiple files to handle the new folder-based report format
+uploaded_files = st.file_uploader(
+    "Select all CSV files from your report folder", 
+    type=["csv"], 
+    accept_multiple_files=True
+)
 
-uploaded_file = st.file_uploader("Upload audit CSV file", type=["csv"])
+if uploaded_files:
+    # Map filenames to DataFrames for easy access
+    file_map = {file.name.upper(): pd.read_csv(file) for file in uploaded_files}
+    
+    # --- AI ANOMALY DETECTION ---
+    st.header("📊 AI Risk Analysis")
+    
+    # Combine numeric data from all uploaded files for the AI model
+    all_numeric = pd.concat([df.select_dtypes(include=['number']) for df in file_map.values()], axis=1).fillna(0)
 
-if uploaded_file:
-
-    try:
-        df = pd.read_csv(uploaded_file)
-        st.success("CSV File Loaded Successfully")
-
-        if "Value1" not in df.columns:
-            st.error("Invalid CSV structure.")
-            st.stop()
-
-        numeric_df = df.select_dtypes(include=['number'])
-
-        if numeric_df.empty:
-            st.error("No numeric data available for analysis.")
-            st.stop()
-
-        # ---------------- AI MODEL ----------------
-        model = IsolationForest(
-            n_estimators=150,
-            contamination=0.05,
-            random_state=42
-        )
-
-        model.fit(numeric_df)
-        predictions = model.predict(numeric_df)
-
-        df["Anomaly"] = predictions
-        df["Anomaly"] = df["Anomaly"].map({1: "Normal", -1: "Anomaly"})
-
-        anomaly_df = df[df["Anomaly"] == "Anomaly"]
-
-        total_records = len(df)
-        total_anomalies = len(anomaly_df)
-
-        # ---------------- RISK SCORE ----------------
-        risk_score = round((total_anomalies / total_records) * 100, 2)
-
-        if risk_score < 10:
-            severity = "Low"
-            color = "green"
-        elif risk_score < 30:
-            severity = "Medium"
-            color = "orange"
-        else:
-            severity = "High"
-            color = "red"
-
-        # ---------------- RESULTS ----------------
-        st.header("📊 AI Analysis Results")
+    if not all_numeric.empty:
+        model = IsolationForest(n_estimators=100, contamination=0.05, random_state=42)
+        preds = model.fit_predict(all_numeric)
+        
+        total_points = len(preds)
+        anomalies = (preds == -1).sum()
+        risk_score = round((anomalies / total_points) * 100, 2)
 
         col1, col2, col3 = st.columns(3)
-        col1.metric("Total Records", total_records)
-        col2.metric("Total Anomalies", total_anomalies)
-        col3.metric("Risk Score (%)", risk_score)
+        col1.metric("Telemetry Points", total_points)
+        col2.metric("Anomalies Detected", anomalies)
+        col3.metric("System Risk Score", f"{risk_score}%")
 
-        st.markdown(
-            f"### 🚨 Severity Level: <span style='color:{color}'>{severity}</span>",
-            unsafe_allow_html=True
-        )
-
-        # ---------------- VISUALIZATION ----------------
-        st.subheader("📈 Analysis Visualization")
-
-        colA, colB = st.columns(2)
-
-        with colA:
-            fig1, ax1 = plt.subplots(figsize=(3, 3))
-            ax1.pie(
-                [total_records - total_anomalies, total_anomalies],
-                labels=["Normal", "Anomaly"],
-                autopct="%1.1f%%"
-            )
-            ax1.set_title("Distribution")
-            st.pyplot(fig1)
-
-        with colB:
-            fig2, ax2 = plt.subplots(figsize=(3, 3))
-            categories = ["Normal", "Anomaly"]
-            values = [total_records - total_anomalies, total_anomalies]
-            ax2.bar(categories, values)
-            ax2.set_title("Record Count Comparison")
-            ax2.set_ylabel("Number of Records")
-            st.pyplot(fig2)
-
-        # ---------------- ANOMALY TABLE ----------------
-        if total_anomalies > 0:
-            st.subheader("⚠ Detected Anomalies")
-            st.dataframe(anomaly_df)
+        if risk_score > 15:
+            st.error("🚨 HIGH RISK: Significant statistical anomalies detected.")
         else:
-            st.success("No anomalies detected.")
+            st.success("✅ LOW RISK: System telemetry appears normal.")
 
-        # ---------------- INSTALLED APPLICATIONS ----------------
-        st.subheader("💻 Installed Applications")
+    # --- CATEGORIZED TABLES ---
+    st.header("🔍 Detailed Security Audit")
+    tab1, tab2, tab3, tab4 = st.tabs(["🌐 Network", "⚙️ Processes", "🛡️ Security & Users", "📂 Raw Data Index"])
 
-        apps_df = df[df["Type"] == "InstalledApp"]
+    # Utility function to remove metadata columns from display
+    def clean_display(df):
+        return df.drop(columns=["Audit_Reference_Timestamp", "Asset_Hostname", "Section_Title"], errors='ignore')
 
-        if not apps_df.empty:
-            st.dataframe(
-                apps_df[["Value1"]]
-                .rename(columns={"Value1": "Application Name"})
-            )
-        else:
-            st.info("No installed application data found.")
+    with tab1:
+        st.subheader("Listening Ports & Active Connections")
+        for name, df in file_map.items():
+            if any(k in name for k in ["PORT", "CONNECTION", "IP"]):
+                st.write(f"**Section:** {name}")
+                st.dataframe(clean_display(df), use_container_width=True)
 
-    except Exception as e:
-        st.error(f"Error processing file: {e}")
+    with tab2:
+        st.subheader("Running Processes & Startup Programs")
+        for name, df in file_map.items():
+            if any(k in name for k in ["PROCESS", "STARTUP", "PROGRAM"]):
+                st.write(f"**Section:** {name}")
+                st.dataframe(clean_display(df), use_container_width=True)
+
+    with tab3:
+        st.subheader("Local Users, Admins & Security Policies")
+        for name, df in file_map.items():
+            if any(k in name for k in ["USER", "ADMIN", "POLICY", "STATUS", "FIREWALL"]):
+                st.write(f"**Section:** {name}")
+                st.dataframe(clean_display(df), use_container_width=True)
+
+    with tab4:
+        st.subheader("Full Report File Index")
+        for name, df in file_map.items():
+            with st.expander(f"📄 View Raw File: {name}"):
+                st.dataframe(df)
+
+else:
+    st.info("Waiting for report files... Run the script locally and upload the resulting CSVs.")
