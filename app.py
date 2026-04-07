@@ -154,8 +154,8 @@ if uploaded_files:
 
                 # 2. Setup Email Settings
                 # Replace with your actual credentials or Streamlit Secrets
-                SENDER_EMAIL = "your-email@gmail.com" 
-                SENDER_PASSWORD = "your-app-password" 
+                SENDER_EMAIL = "fypj21649@gmail.com" 
+                SENDER_PASSWORD = "12345678sai" 
 
                 msg = MIMEMultipart()
                 msg['From'] = SENDER_EMAIL
