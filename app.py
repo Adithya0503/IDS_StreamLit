@@ -29,6 +29,7 @@ st.markdown("""
 st.header("📥 Step 1: Download Audit Script")
 
 try:
+    # Ensure windows_system_audit.py is in your GitHub root directory
     with open("windows_system_audit.py", "rb") as file:
         st.download_button(
             label="Download Formal Audit Script (.py)",
@@ -52,18 +53,19 @@ uploaded_files = st.file_uploader(
 )
 
 if uploaded_files:
+    # Create a mapping of filename to DataFrame 
     file_map = {file.name.upper(): pd.read_csv(file) for file in uploaded_files}
     
     # --- AI RISK ANALYSIS ---
     st.header("📊 AI Risk Analysis")
     
-    # Extract numeric telemetry for the Isolation Forest model
+    # Extract numeric data for Isolation Forest
     all_numeric = pd.concat([df.select_dtypes(include=['number']) for df in file_map.values()], axis=1).fillna(0)
 
     risk_score = 0
     if not all_numeric.empty:
         model = IsolationForest(n_estimators=150, contamination=0.05, random_state=42)
-        preds = model.fit_predict(all_numeric)
+        preds = model.fit_predict(all_numeric) # Anomaly prediction
         
         total_points = len(preds)
         anomalies = (preds == -1).sum()
@@ -83,6 +85,7 @@ if uploaded_files:
     tab1, tab2, tab3, tab4 = st.tabs(["🌐 Network", "⚙️ Processes", "🛡️ Security & Users", "📂 Raw Index"])
 
     def clean_df(df):
+        # Remove metadata columns for cleaner display 
         return df.drop(columns=["Audit_Reference_Timestamp", "Asset_Hostname", "Section_Title"], errors='ignore')
 
     with tab1:
@@ -114,7 +117,7 @@ if uploaded_files:
     st.divider()
     st.header("📧 Step 3: Send PDF Report")
     
-    # Identify device name from the audit metadata
+    # Identify device name from audit metadata
     first_df = list(file_map.values())[0]
     device_name = first_df["Asset_Hostname"].iloc[0] if "Asset_Hostname" in first_df.columns else "Unknown_Device"
 
@@ -137,7 +140,6 @@ if uploaded_files:
                 c.drawString(50, 680, "🛡️ Security Recommendations:")
                 c.setFont("Helvetica", 11)
                 
-                # Dynamic recommendations based on risk score
                 recommendations = [
                     "• Investigate all processes flagged as anomalies for hidden malware.",
                     "• Verify that RDP (Port 3389) is disabled if not actively used.",
@@ -153,13 +155,12 @@ if uploaded_files:
                 c.save()
 
                 # 2. Setup Email Settings
-                # Replace with your actual credentials or Streamlit Secrets
                 SENDER_EMAIL = "fypj21649@gmail.com" 
-                SENDER_PASSWORD = "12345678sai" 
+                SENDER_PASSWORD = "rnrb kbpm damx lbmt" # Your new App Password
 
                 msg = MIMEMultipart()
                 msg['From'] = SENDER_EMAIL
-                msg['To'] = recipient_email  # Sends to the address entered in the text box
+                msg['To'] = recipient_email  
                 msg['Subject'] = f"🛡️ Windows Security Report - {device_name}"
                 
                 email_body = f"Please find the attached Security Audit for {device_name}.\nRisk Score: {risk_score}%"
@@ -170,13 +171,13 @@ if uploaded_files:
                     part['Content-Disposition'] = f'attachment; filename="{pdf_path}"'
                     msg.attach(part)
 
-                # 3. Connect and Send
+                # 3. Connect and Send using SSL (Port 465)
                 with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
                     server.login(SENDER_EMAIL, SENDER_PASSWORD)
                     server.send_message(msg)
 
                 st.success(f"✅ Security report has been sent to {recipient_email}")
-                os.remove(pdf_path) # Clean up
+                os.remove(pdf_path) 
 
             except Exception as e:
                 st.error(f"Error sending email: {e}")
