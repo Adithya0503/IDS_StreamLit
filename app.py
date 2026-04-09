@@ -17,35 +17,92 @@ st.title("🛡️ Windows AI Security Anomaly Detection System")
 
 st.markdown("""
 ### 📋 Instructions
-1. **Download** the `windows_system_audit.py` script below.
-2. **Run** it locally on Windows to generate your report folder.
-3. **Upload** all CSV files from that folder here.
-4. **Enter an email** below to receive the PDF report.
+1. **Download** the `audit_collector.cmd` file below.
+2. **Run** it on your Windows machine. It will automatically install requirements and perform the scan.
+3. **Upload** all CSV files from the generated `audit_output` folder to this dashboard.
+4. **Enter an email** to receive the summarized PDF security report.
 """)
 
 # -------------------------------------------------------
-# STEP 1: DOWNLOAD SECTION
+# STEP 1: DYNAMIC CMD GENERATOR
 # -------------------------------------------------------
-st.header("📥 Step 1: Download Audit Script")
+st.header("📥 Step 1: Download Audit Collector")
 
-try:
-    with open("windows_system_audit.py", "rb") as file:
-        st.download_button(
-            label="Download Formal Audit Script (.py)",
-            data=file,
-            file_name="windows_system_audit.py",
-            mime="text/x-python"
-        )
-except FileNotFoundError:
-    st.error("Error: Please ensure 'windows_system_audit.py' is in your GitHub root folder.")
+# This is the "One-Click" script that installs libraries and runs the audit
+cmd_code = r"""@echo off
+color 0A
+title Windows AI Security Audit Collector
+
+echo =====================================================
+echo       WINDOWS AI SECURITY DATA COLLECTOR
+echo =====================================================
+echo.
+
+python --version >nul 2>&1
+IF %ERRORLEVEL% NEQ 0 (
+    echo [ERROR] Python is NOT installed.
+    echo Please install Python from https://www.python.org/
+    pause
+    exit /b
+)
+
+echo [STATUS] Verifying required libraries (psutil)...
+pip install psutil --quiet
+
+set SCRIPT_NAME=windows_system_audit.py
+echo [STATUS] Preparing audit engine...
+
+(
+echo import csv, json, os, platform, re, socket, subprocess, sys, winreg
+echo from datetime import datetime
+echo import psutil
+echo def get_system_info_dict^(^):
+echo     hostname = socket.gethostname^(^)
+echo     mem = psutil.virtual_memory^(^)
+echo     disk = psutil.disk_usage^(os.environ.get^("SystemDrive", "C:"^)^)
+echo     return {"Asset_Hostname": hostname, "Memory_Total_GB": round^(mem.total / ^(1024**3^), 2^), "Disk_Total_GB": round^(disk.total / ^(1024**3^), 2^)}
+echo def run_audit^(^):
+echo     ts = datetime.now^(^).strftime^("%%Y-%%m-%%d %%H:%%M:%%S"^).replace^(":","-"^)
+echo     host = socket.gethostname^(^)
+echo     folder = f"audit_output/Report_{ts}_{host}"
+echo     os.makedirs^(folder, exist_ok=True^)
+echo     path = os.path.join^(folder, "03_SYSTEM_INFO.csv"^)
+echo     with open^(path, "w", newline="", encoding="utf-8-sig"^) as f:
+echo         w = csv.DictWriter^(f, fieldnames=["Audit_Reference_Timestamp", "Asset_Hostname", "Section_Title", "Memory_Total_GB", "Disk_Total_GB"]^)
+echo         w.writeheader^(^)
+echo         data = get_system_info_dict^(^)
+echo         data.update^({"Audit_Reference_Timestamp": ts, "Section_Title": "SYSTEM_INFO"^}^)
+echo         w.writerow^(data^)
+echo     print^(f"Audit completed. Folder: {folder}"^)
+echo if __name__ == "__main__": run_audit^(^)
+) > %SCRIPT_NAME%
+
+echo [STATUS] Running System Audit...
+python %SCRIPT_NAME%
+
+echo.
+echo =====================================================
+echo AUDIT COMPLETED SUCCESSFULLY
+echo Please upload the CSV files from the 'audit_output' folder.
+echo =====================================================
+explorer audit_output
+pause
+"""
+
+st.download_button(
+    label="Download Audit Collector (.cmd)",
+    data=cmd_code,
+    file_name="audit_collector.cmd",
+    mime="application/octet-stream"
+)
 
 # -------------------------------------------------------
-# STEP 2: UPLOAD & ANALYSIS SECTION
+# STEP 2: UPLOAD & ANALYSIS
 # -------------------------------------------------------
 st.header("📤 Step 2: Upload Generated CSV Files")
 
 uploaded_files = st.file_uploader(
-    "Select all CSV files from your audit report folder", 
+    "Select all CSV files from your report folder", 
     type=["csv"], 
     accept_multiple_files=True
 )
@@ -54,7 +111,7 @@ if uploaded_files:
     file_map = {file.name.upper(): pd.read_csv(file) for file in uploaded_files}
     
     # --- AI RISK ANALYSIS ---
-    # Isolation Forest detects statistical outliers in system telemetry
+    # Isolation Forest looks for statistical outliers in numeric telemetry
     all_numeric = pd.concat([df.select_dtypes(include=['number']) for df in file_map.values()], axis=1).fillna(0)
 
     risk_score = 0
@@ -66,13 +123,13 @@ if uploaded_files:
         anomalies = (preds == -1).sum()
         risk_score = round((anomalies / total_points) * 100, 2)
 
-        col1, col2, col3 = st.columns(3)
-        col1.metric("Telemetry Records", total_points)
-        col2.metric("Anomalies Detected", anomalies)
-        col3.metric("Risk Score", f"{risk_score}%")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Telemetry Records", total_points)
+        c2.metric("Anomalies Detected", anomalies)
+        c3.metric("Risk Score", f"{risk_score}%")
 
     # --- CATEGORIZED TABS ---
-    tab1, tab2, tab3, tab4 = st.tabs(["🌐 Network", "⚙️ Processes", "🛡️ Security & Users", "📂 Raw Index"])
+    tab1, tab2, tab3 = st.tabs(["🌐 Network", "⚙️ Processes", "🛡️ Security & Users"])
 
     def clean_df(df):
         return df.drop(columns=["Audit_Reference_Timestamp", "Asset_Hostname", "Section_Title"], errors='ignore')
@@ -80,33 +137,24 @@ if uploaded_files:
     with tab1:
         for name, df in file_map.items():
             if any(k in name for k in ["PORT", "CONNECTION", "IP"]):
-                st.write(f"**Source:** {name}")
                 st.dataframe(clean_df(df), use_container_width=True)
 
     with tab2:
         for name, df in file_map.items():
             if any(k in name for k in ["PROCESS", "STARTUP", "PROGRAM"]):
-                st.write(f"**Source:** {name}")
                 st.dataframe(clean_df(df), use_container_width=True)
 
     with tab3:
         for name, df in file_map.items():
             if any(k in name for k in ["USER", "ADMIN", "POLICY", "STATUS", "FIREWALL"]):
-                st.write(f"**Source:** {name}")
                 st.dataframe(clean_df(df), use_container_width=True)
 
-    with tab4:
-        for name, df in file_map.items():
-            with st.expander(f"View {name}"):
-                st.dataframe(df)
-
     # -------------------------------------------------------
-    # STEP 3: EMAIL PDF REPORT (CONNECTIVITY FIX)
+    # STEP 3: EMAIL PDF REPORT (FIXED CONNECTIVITY)
     # -------------------------------------------------------
     st.divider()
     st.header("📧 Step 3: Send PDF Report")
     
-    # Identify device name from report metadata
     first_df = list(file_map.values())[0]
     device_name = first_df["Asset_Hostname"].iloc[0] if "Asset_Hostname" in first_df.columns else "Unknown_Device"
 
@@ -117,29 +165,16 @@ if uploaded_files:
             try:
                 # 1. Generate PDF
                 pdf_path = f"Security_Report_{device_name}.pdf"
-                c = canvas.Canvas(pdf_path, pagesize=letter)
-                c.setFont("Helvetica-Bold", 16)
-                c.drawString(50, 750, f"AI Security Audit: {device_name}")
-                c.setFont("Helvetica", 12)
-                c.drawString(50, 730, f"Risk Score: {risk_score}%")
-                
-                c.setFont("Helvetica-Bold", 14)
-                c.drawString(50, 680, "🛡️ Security Recommendations:")
-                c.setFont("Helvetica", 11)
-                recs = [
-                    "• Investigate anomalous processes for unauthorized activity.",
-                    "• Review 'OpenPort' list; close ports like 3389 (RDP) if not required.",
-                    "• Ensure all Windows Firewall profiles are enabled.",
-                    "• Audit Local Administrator accounts for new or unknown users."
-                ]
-                y = 660
-                for r in recs:
-                    c.drawString(60, y, r); y -= 20
-                c.save()
+                canvas_obj = canvas.Canvas(pdf_path, pagesize=letter)
+                canvas_obj.setFont("Helvetica-Bold", 16)
+                canvas_obj.drawString(50, 750, f"AI Security Audit: {device_name}")
+                canvas_obj.setFont("Helvetica", 12)
+                canvas_obj.drawString(50, 730, f"Risk Score: {risk_score}%")
+                canvas_obj.save()
 
-                # 2. Setup Email Credentials
-                SENDER_EMAIL = "fypj21649@gmail.com" 
-                SENDER_PASSWORD = "tneu xfaf sqrv ebgh" # Updated App Password
+                # 2. Setup Credentials (Sourced from Secrets)
+                SENDER_EMAIL = st.secrets["SENDER_EMAIL"]
+                SENDER_PASSWORD = st.secrets["SENDER_PASSWORD"]
 
                 msg = MIMEMultipart()
                 msg['From'] = SENDER_EMAIL
@@ -152,9 +187,9 @@ if uploaded_files:
                     part['Content-Disposition'] = f'attachment; filename="{pdf_path}"'
                     msg.attach(part)
 
-                # 3. Connection Logic using Port 587 (STARTTLS)
+                # 3. Secure Connection using Port 587 (STARTTLS)
                 server = smtplib.SMTP("smtp.gmail.com", 587)
-                server.starttls() # Secure the connection
+                server.starttls() 
                 server.login(SENDER_EMAIL, SENDER_PASSWORD)
                 server.send_message(msg)
                 server.quit()
@@ -167,4 +202,4 @@ if uploaded_files:
         else:
             st.warning("Please enter a valid email address.")
 else:
-    st.info("Upload CSV files from your report folder to begin.")
+    st.info("Upload CSV files to begin.")
